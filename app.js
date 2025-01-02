@@ -1,48 +1,34 @@
-import bcrypt from "bcrypt";
+import "dotenv/config"; // Method .config() looks for file .env, reads it and add to process.env keys with values.
+import jwt from "jsonwebtoken";
 
-const saltRounds = 10;
-const myPlaintextPassword =
-  "YKn.T71XkiHCuL00V2llDx8rzs5d4564lx$12$w6WIy3Oi/usTqoFXSLe2kwM/sUOVoPDy";
-const someOtherPlaintextPassword = "not_bacon";
+// const port = process.env.PORT || 3000;
+const { SECRET_KEY = "" } = process.env;
 
-//* To hash a password
-//# Technique 1 (generate a salt and hash on separate function calls):
-bcrypt.genSalt(saltRounds, function (err, salt) {
-  bcrypt.hash(myPlaintextPassword, salt, function (err, hash) {
-    // Store hash in your password DB.
-  });
-});
+// As payload usually used users id ("_id" in MongoDB)
+const payload = { id: "67765f1b21b8debb7ed21cb6" };
+const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "23h" });
+console.log("token:::", token);
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3NzY1ZjFiMjFiOGRlYmI3ZWQyMWNiNiIsImlhdCI6MTczNTgxMjA5NiwiZXhwIjoxNzM1ODk0ODk2fQ.7e15SOnx2D9qJBpxGeMh-S7nszOKYTPzWpRmXkwmcUo
+// first part - it is coded headers,
+// second part - it is coded payload,
+// last part - it is encrypted headers&payload by secret key
 
-//# Technique 2 (auto-gen a salt and hash):
-bcrypt.hash(myPlaintextPassword, saltRounds, function (err, hash) {
-  // Store hash in your password DB.
-});
+const decodedToken = jwt.decode(token);
+console.log("decodedToken:::", decodedToken);
 
-// Example
-const createHashPassword = async password => {
-  // Old technique:
-  const mySalt = await bcrypt.genSalt(10);
-  const result1 = await bcrypt.hash(password, mySalt);
+//^ Method verify()
+// If token valid the verify() returns payload
+// If token not valid the verify() not returns "false", but throw error. Therefore you must wrap it to try-catch
+try {
+  const result1 = jwt.verify(token, SECRET_KEY); // Checks: 1) whether incoming token was encrypted using SECRET_KEY, 2) whether the token has expired
+  console.log("result1:::", result1); // result1::: { id: '67765f1b21b8debb7ed21cb6', iat: 1735814617, exp: 1735897417 }
 
-  // New technique:
-  const result2 = await bcrypt.hash(password, 10);
+  const result2 = jwt.verify(
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3NzY1ZjFiMjFiOGRlYmI3ZWQyMWNiNiIsImlhdCI6MTczNTgxMjA5NiwiZXhwIjoxNzM1ODk0ODk2fQ.7e15SOnx2D9qJBpxGeMh-S7nszOKYTPzWpRmXkwmcUO",
+    SECRET_KEY,
+  ); // Will throw error "invalid signature"
 
-  // Check received password from user
-  const compareResult1 = await bcrypt.compare(password, result2);
-  console.log("compareResult1:::", compareResult1); // true
-
-  const compareResult2 = await bcrypt.compare("111", result2);
-  console.log("compareResult2:::", compareResult2); // false
-};
-
-createHashPassword("1234567");
-
-//* To check a password
-// Load hash from your password DB.
-const hashFromDb = "aslkdfjlkasdjflkajsudflkj";
-bcrypt.compare(myPlaintextPassword, hashFromDb, function (err, result) {
-  // result == true
-});
-bcrypt.compare(someOtherPlaintextPassword, hashFromDb, function (err, result) {
-  // result == false
-});
+  // If the token has expired the 401 error must be thrown
+} catch (error) {
+  console.log(error.message);
+}

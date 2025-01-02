@@ -1,1 +1,1 @@
-# Example of hashing password by bcrypt
+# Example of creating token and compare incoming token with db key
